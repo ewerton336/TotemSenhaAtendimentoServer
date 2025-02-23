@@ -24,7 +24,7 @@ namespace TotemSenhaAtendimentoServer.Host.Controllers
                 return BadRequest("Dados inválidos.");
             }
 
-            Senha senha = _senhaService.GerarSenha(request);
+            Senha senha = _senhaService.GerarSenha(request, "fila_senhas");
 
             return Ok(senha);
         }

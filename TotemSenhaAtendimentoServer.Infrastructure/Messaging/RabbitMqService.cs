@@ -16,12 +16,17 @@ namespace TotemSenhaAtendimentoServer.Infrastructure.Messaging
         {
             _factory = new ConnectionFactory
             {
-                HostName = configuration["RabbitMQ:HostName"] ?? "localhost"
+                HostName = configuration["RabbitMQ:HostName"] ?? "localhost",
+                UserName = configuration["RabbitMQ:UserName"] ?? "admin",  // Adicionado
+                Password = configuration["RabbitMQ:Password"] ?? "admin",  // Adicionado
+                VirtualHost = "/",
+                AutomaticRecoveryEnabled = true, // Para reconectar automaticamente
+                RequestedHeartbeat = TimeSpan.FromSeconds(30) // Evita desconexões inesperadas
             };
-            _queueName = configuration["RabbitMQ:QueueName"] ?? "fila_senhas";
+     
         }
 
-        public async Task PublicarMensagemAsync<T>(T mensagem)
+        public async Task PublicarMensagemAsync<T>(T mensagem, string queueName)
         {
             try
             {
@@ -29,7 +34,7 @@ namespace TotemSenhaAtendimentoServer.Infrastructure.Messaging
                 await using var channel = await connection.CreateChannelAsync();
 
                 await channel.QueueDeclareAsync(
-                    queue: _queueName,
+                    queue: queueName,
                     durable: false,
                     exclusive: false,
                     autoDelete: false,
@@ -43,7 +48,7 @@ namespace TotemSenhaAtendimentoServer.Infrastructure.Messaging
 
                 await channel.BasicPublishAsync(
                       exchange: "",
-                      routingKey: _queueName,
+                      routingKey: queueName,
                       mandatory: false,
                       basicProperties: properties,
                       body: body);

@@ -6,6 +6,6 @@ namespace TotemSenhaAtendimentoServer.Domain.Senhas.Services
 {
     public interface ISenhaService : IServiceBase
     {
-        Senha GerarSenha(SenhaRequest request);
+        Senha GerarSenha(SenhaRequest request, string queueName);
     }
 }

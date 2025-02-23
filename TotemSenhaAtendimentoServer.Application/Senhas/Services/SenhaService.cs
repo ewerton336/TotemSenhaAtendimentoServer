@@ -17,7 +17,7 @@ namespace TotemSenhaAtendimentoServer.Application.Senhas.Services
             _rabbitMqService = rabbitMqService;
         }
 
-        public Senha GerarSenha(SenhaRequest request)
+        public Senha GerarSenha(SenhaRequest request, string queueName)
         {
             var codigo = request.Prioritario ? $"P-{_contadorSenhas:D3}" : $"N-{_contadorSenhas:D3}";
             _contadorSenhas++;
@@ -29,8 +29,11 @@ namespace TotemSenhaAtendimentoServer.Application.Senhas.Services
                 Prioritaria = request.Prioritario
             };
 
+            if (senha.Prioritaria)
+                queueName = queueName + "_prioridade";
+
             // Publica a senha no RabbitMQ
-            _rabbitMqService.PublicarMensagemAsync(senha).Wait();
+            _rabbitMqService.PublicarMensagemAsync(senha, queueName).Wait();
 
             return senha;
         }
