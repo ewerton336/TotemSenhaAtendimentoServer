@@ -1,0 +1,6 @@
+@TotemSenhaAtendimentoServer_HostAddress = http://localhost:5287
+
+GET {{TotemSenhaAtendimentoServer_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
