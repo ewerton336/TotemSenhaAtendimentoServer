@@ -1,4 +1,6 @@
-﻿using TotemSenhaAtendimentoServer.Domain.Senhas.Dtos;
+﻿using System.Text.Json;
+using TotemSenhaAtendimentoServer.Domain.Filas.Dtos;
+using TotemSenhaAtendimentoServer.Domain.Senhas.Dtos;
 using TotemSenhaAtendimentoServer.Domain.Senhas.Entities;
 using TotemSenhaAtendimentoServer.Domain.Senhas.Services;
 using TotemSenhaAtendimentoServer.Infrastructure.Messaging;
@@ -34,25 +36,71 @@ namespace TotemSenhaAtendimentoServer.Application.Senhas.Services
             return senha;
         }
 
-        public async Task<List<Senha>> ObterFila(string queueName)
+        public async Task<FilaSenhasResponse> ObterFila()
         {
-            if (queueName.Contains("prioridade"))
-                queueName += "_prioridade";
+            var mensagensNormais = await _rabbitMqService.ConsultarMensgens("fila_senhas_normal");
+            var mensagensPrioritarias = await _rabbitMqService.ConsultarMensgens("fila_senhas_prioritaria");
 
-            var mensagens = await _rabbitMqService.ConsumirMensagens(queueName);
-            return mensagens.Select(m => new Senha { Codigo = m, Prioritaria = queueName.Contains("prioridade") }).ToList();
+            var totalNormais = await _rabbitMqService.ContarMensagens("fila_senhas_normal");
+            var totalPrioritarias = await _rabbitMqService.ContarMensagens("fila_senhas_prioritaria");
+
+            var senhasNormais = mensagensNormais.Select(m =>
+            {
+                try
+                {
+                    return JsonSerializer.Deserialize<Senha>(m) ?? new Senha { Codigo = "Erro de conversão" };
+                }
+                catch
+                {
+                    return new Senha { Codigo = "Erro de conversão" };
+                }
+            }).ToList();
+
+            var senhasPrioritarias = mensagensPrioritarias.Select(m =>
+            {
+                try
+                {
+                    return JsonSerializer.Deserialize<Senha>(m) ?? new Senha { Codigo = "Erro de conversão" };
+                }
+                catch
+                {
+                    return new Senha { Codigo = "Erro de conversão" };
+                }
+            }).ToList();
+
+            return new FilaSenhasResponse
+            {
+                SenhaNormal = senhasNormais,
+                SenhaNormalCount = totalNormais,
+                SenhaPrioritaria = senhasPrioritarias,
+                SenhaPrioritariaCount = totalPrioritarias
+            };
         }
+
 
         public async Task<Senha?> ChamarProximaSenha(string queueName)
         {
-            if (queueName.Contains("prioridade"))
-                queueName += "_prioridade";
-
             var mensagem = await _rabbitMqService.ConsumirProximaMensagem(queueName);
-            if (mensagem == null) return null;
+            if (string.IsNullOrWhiteSpace(mensagem)) return null;
 
-            return new Senha { Codigo = mensagem, Prioritaria = queueName.Contains("prioridade") };
+            try
+            {
+                var senha = JsonSerializer.Deserialize<Senha>(mensagem, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true, // Ignora maiúsculas e minúsculas nos nomes das propriedades
+                    IncludeFields = true, // Garante que campos também sejam incluídos na serialização
+                    WriteIndented = true // Apenas para depuração, melhora a formatação do JSON
+                });
+
+                return senha;
+            }
+            catch (JsonException ex)
+            {
+                Console.WriteLine($"Erro ao desserializar a mensagem: {mensagem}. Erro: {ex.Message}");
+                return null;
+            }
         }
+
 
     }
 }

@@ -62,7 +62,7 @@ namespace TotemSenhaAtendimentoServer.Infrastructure.Messaging
             }
         }
 
-        public async Task<List<string>> ConsumirMensagens(string queueName)
+        public async Task<List<string>> ConsultarMensgens(string queueName)
         {
             var mensagens = new List<string>();
 
@@ -79,7 +79,7 @@ namespace TotemSenhaAtendimentoServer.Infrastructure.Messaging
                      arguments: null);
 
                 var result = await channel.BasicGetAsync(queueName, false);
-                while (result != null)
+                while (result != null && mensagens.Count < 5)
                 {
                     var mensagem = Encoding.UTF8.GetString(result.Body.ToArray());
                     mensagens.Add(mensagem);
@@ -119,6 +119,25 @@ namespace TotemSenhaAtendimentoServer.Infrastructure.Messaging
                 return null;
             }
         }
+
+
+        public async Task<int> ContarMensagens(string queueName)
+        {
+            try
+            {
+                await using var connection = await _factory.CreateConnectionAsync();
+                await using var channel = await connection.CreateChannelAsync();
+
+                var queueInfo = await channel.QueueDeclarePassiveAsync(queueName);
+                return (int)queueInfo.MessageCount;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erro ao contar mensagens na fila {queueName}: {ex.Message}");
+                return 0;
+            }
+        }
+
 
     }
 }

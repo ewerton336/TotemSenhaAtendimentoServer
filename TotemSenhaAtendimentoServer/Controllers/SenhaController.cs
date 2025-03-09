@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using TotemSenhaAtendimentoServer.Domain.Filas.Dtos;
 using TotemSenhaAtendimentoServer.Domain.Senhas.Dtos;
 using TotemSenhaAtendimentoServer.Domain.Senhas.Entities;
 using TotemSenhaAtendimentoServer.Domain.Senhas.Services;
@@ -31,32 +32,19 @@ namespace TotemSenhaAtendimentoServer.Host.Controllers
         }
 
         [HttpGet("fila")]
-        public async Task<IActionResult> GetFila()
+        public async Task<FilaSenhasResponse> GetFila()
         {
-            var filaNormal = await _senhaService.ObterFila("fila_senhas_normal");
-            var filaPrioritaria = await _senhaService.ObterFila("fila_senhas_prioritaria");
-
-            return Ok(new
-            {
-                Normal = filaNormal,
-                Prioritaria = filaPrioritaria
-            });
+            return await _senhaService.ObterFila();
         }
 
 
 
-        [HttpPost("chamar/{tipo}")]
-        public IActionResult ChamarProximaSenha(string tipo)
+        [HttpPost("chamar")]
+        public async Task<Senha?> ChamarProximaSenha(bool prioritario)
         {
-            string queueName = tipo.ToLower() == "prioritaria" ? "fila_senhas_prioritaria" : "fila_senhas_normal";
-            var senha = _senhaService.ChamarProximaSenha(queueName);
-
-            if (senha == null)
-            {
-                return NotFound("Nenhuma senha na fila.");
-            }
-
-            return Ok(senha);
+            string queueName = prioritario ? "fila_senhas_prioritaria" : "fila_senhas_normal";
+            var senha = await _senhaService.ChamarProximaSenha(queueName);
+            return senha;
         }
     }
 }
