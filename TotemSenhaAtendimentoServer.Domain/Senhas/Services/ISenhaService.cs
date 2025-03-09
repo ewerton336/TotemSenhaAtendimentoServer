@@ -6,6 +6,10 @@ namespace TotemSenhaAtendimentoServer.Domain.Senhas.Services
 {
     public interface ISenhaService : IServiceBase
     {
-        Senha GerarSenha(SenhaRequest request, string queueName);
+        Task<Senha> GerarSenha(SenhaRequest request, string queueName);
+        Task<List<Senha>> ObterFila(string queueName);
+        public Task<Senha?> ChamarProximaSenha(string queueName);
+
+
     }
 }

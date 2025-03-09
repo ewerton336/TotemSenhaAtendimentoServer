@@ -3,7 +3,6 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Exceptions;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace TotemSenhaAtendimentoServer.Infrastructure.Messaging
 {
@@ -23,7 +22,7 @@ namespace TotemSenhaAtendimentoServer.Infrastructure.Messaging
                 AutomaticRecoveryEnabled = true, // Para reconectar automaticamente
                 RequestedHeartbeat = TimeSpan.FromSeconds(30) // Evita desconexões inesperadas
             };
-     
+
         }
 
         public async Task PublicarMensagemAsync<T>(T mensagem, string queueName)
@@ -62,5 +61,64 @@ namespace TotemSenhaAtendimentoServer.Infrastructure.Messaging
                 Console.WriteLine($"Erro ao publicar mensagem: {ex.Message}");
             }
         }
+
+        public async Task<List<string>> ConsumirMensagens(string queueName)
+        {
+            var mensagens = new List<string>();
+
+            try
+            {
+                await using var connection = await _factory.CreateConnectionAsync();
+                await using var channel = await connection.CreateChannelAsync();
+
+                await channel.QueueDeclareAsync(
+                     queue: queueName,
+                     durable: false,
+                     exclusive: false,
+                     autoDelete: false,
+                     arguments: null);
+
+                var result = await channel.BasicGetAsync(queueName, false);
+                while (result != null)
+                {
+                    var mensagem = Encoding.UTF8.GetString(result.Body.ToArray());
+                    mensagens.Add(mensagem);
+                    result = await channel.BasicGetAsync(queueName, false);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erro ao consumir mensagens: {ex.Message}");
+            }
+
+            return mensagens;
+        }
+
+        public async Task<string?> ConsumirProximaMensagem(string queueName)
+        {
+            try
+            {
+                await using var connection = await _factory.CreateConnectionAsync();
+                await using var channel = await connection.CreateChannelAsync();
+
+                await channel.QueueDeclareAsync(
+                     queue: queueName,
+                     durable: false,
+                     exclusive: false,
+                     autoDelete: false,
+                     arguments: null);
+
+                var result = await channel.BasicGetAsync(queueName, true);
+                if (result == null) return null;
+
+                return Encoding.UTF8.GetString(result.Body.ToArray());
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erro ao consumir próxima mensagem: {ex.Message}");
+                return null;
+            }
+        }
+
     }
 }

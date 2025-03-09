@@ -17,14 +17,44 @@ namespace TotemSenhaAtendimentoServer.Host.Controllers
         }
 
         [HttpPost]
-        public IActionResult GerarSenha([FromBody] SenhaRequest request)
+        public async Task<IActionResult> GerarSenha([FromBody] SenhaRequest request)
         {
             if (request == null)
             {
                 return BadRequest("Dados inválidos.");
             }
 
-            Senha senha = _senhaService.GerarSenha(request, "fila_senhas");
+            string queueName = request.Prioritario ? "fila_senhas_prioritaria" : "fila_senhas_normal";
+            Senha senha = await _senhaService.GerarSenha(request, queueName);
+
+            return Ok(senha);
+        }
+
+        [HttpGet("fila")]
+        public async Task<IActionResult> GetFila()
+        {
+            var filaNormal = await _senhaService.ObterFila("fila_senhas_normal");
+            var filaPrioritaria = await _senhaService.ObterFila("fila_senhas_prioritaria");
+
+            return Ok(new
+            {
+                Normal = filaNormal,
+                Prioritaria = filaPrioritaria
+            });
+        }
+
+
+
+        [HttpPost("chamar/{tipo}")]
+        public IActionResult ChamarProximaSenha(string tipo)
+        {
+            string queueName = tipo.ToLower() == "prioritaria" ? "fila_senhas_prioritaria" : "fila_senhas_normal";
+            var senha = _senhaService.ChamarProximaSenha(queueName);
+
+            if (senha == null)
+            {
+                return NotFound("Nenhuma senha na fila.");
+            }
 
             return Ok(senha);
         }
